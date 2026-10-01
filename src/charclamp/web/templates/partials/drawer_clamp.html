@@ -12,6 +12,21 @@
     <p class="hint">{{ clamp.notes }}</p>
     {% endif %}
 
+    <section class="drawer-slip" aria-label="今日过磅联">
+      <h3>今日（{{ today.isoformat() }}）出炭过磅联</h3>
+      {% if today_slip %}
+      <p class="hint ok">
+        已有合格未作废联（联号 {{ today_slip.id }}）：毛重 {{ '%.1f'|format(today_slip.gross_kg) }}kg −
+        皮重 {{ '%.1f'|format(today_slip.tare_kg) }}kg =
+        净重 <strong>{{ '%.1f'|format(today_slip.net_kg) }}kg</strong> · 司秤 {{ today_slip.weigher }}
+      </p>
+      {% else %}
+      <p class="hint warn">今日尚无合格且未作废的出炭过磅联，须先到
+        <a href="/weigh-slips">过磅联专页</a> 落下联单（净重 ≥ 50kg）。
+      </p>
+      {% endif %}
+    </section>
+
     <div class="drawer-actions-stack">
       <button
         type="button"
@@ -20,6 +35,8 @@
         hx-target="#drawer-root"
         hx-swap="innerHTML"
       >为本窑登记班次</button>
+
+      <a class="btn ghost" href="/weigh-slips">前往过磅联专页</a>
 
       {% if clamp.status != 'drawn' %}
       <form method="post" action="/clamps/{{ clamp.id }}/status">
@@ -31,7 +48,7 @@
       {% if not can_drawn %}
       <p class="hint warn">{{ drawn_msg }}</p>
       {% else %}
-      <p class="hint">最近班次峰值已达标（≥ 400℃），可标记出炭。</p>
+      <p class="hint">今日合格联已落下，且最近班次峰值已达标（≥ 400℃），可标记出炭。</p>
       {% endif %}
       {% else %}
       <form method="post" action="/clamps/{{ clamp.id }}/status">

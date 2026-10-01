@@ -23,5 +23,8 @@ session_auth = SessionAuth[User, ServerSideSessionBackend](
     session_backend_config=ServerSideSessionConfig(
         session_id_bytes=32,
     ),
-    exclude=["/", "/login", "/logout", "/static", "/schema", "/favicon.ico"],
+    # 注意：切勿把 "/" 放入 exclude——它会作为前缀贪婪匹配全部路径，
+    # 等于整体关闭认证中间件，导致 request.user 永远未注入。
+    # 未登录访问受保护页由 NotAuthorizedException 处理器重定向到 /login。
+    exclude=["/login", "/logout", "/static", "/schema", "/favicon.ico"],
 )

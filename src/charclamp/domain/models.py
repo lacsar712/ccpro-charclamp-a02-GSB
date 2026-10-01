@@ -1,8 +1,20 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -54,6 +66,10 @@ class Clamp(Base):
         back_populates="clamp",
         cascade="all, delete-orphan",
     )
+    weigh_slips: Mapped[list[DrawWeighSlip]] = relationship(
+        back_populates="clamp",
+        cascade="all, delete-orphan",
+    )
 
 
 class BurnShift(Base):
@@ -67,3 +83,41 @@ class BurnShift(Base):
     notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
     clamp: Mapped[Clamp] = relationship(back_populates="shifts")
+
+
+class DrawWeighSlip(Base):
+    """出炭过磅联：出炭前须先落下一张合格、未作废的当日联。"""
+
+    __tablename__ = "draw_weigh_slips"
+    __table_args__ = (
+        # 同一炭窑同一自然日最多一张「合格且未作废」联（并发抢落由数据库兜底）。
+        Index(
+            "uq_weigh_slip_one_qualified_per_clamp_day",
+            "clamp_id",
+            "weighed_on",
+            unique=True,
+            postgresql_where=text("is_qualified AND NOT is_voided"),
+            sqlite_where=text("is_qualified AND NOT is_voided"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    clamp_id: Mapped[int] = mapped_column(ForeignKey("clamps.id"), nullable=False)
+    weighed_on: Mapped[date] = mapped_column(Date, nullable=False)
+    gross_kg: Mapped[float] = mapped_column(Float, nullable=False)  # 毛重千克
+    tare_kg: Mapped[float] = mapped_column(Float, nullable=False)  # 皮重千克
+    weigher: Mapped[str] = mapped_column(String(64), nullable=False)  # 司秤人
+    is_qualified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_voided: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    clamp: Mapped[Clamp] = relationship(back_populates="weigh_slips")
+
+    @property
+    def net_kg(self) -> float:
+        """净重 = 毛重 − 皮重（千克）。"""
+        return self.gross_kg - self.tare_kg

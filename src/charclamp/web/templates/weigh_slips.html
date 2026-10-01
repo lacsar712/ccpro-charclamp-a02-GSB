@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}出炭过磅联{% endblock %}
+{% block site_label %}乌石岗焖烧坞{% endblock %}
+{% block top_actions %}{% endblock %}
+
+{% block content %}
+<section class="slip-head">
+  <div>
+    <h1>出炭过磅联</h1>
+    <p>
+      已出炭前须先在本专页落下出炭过磅联并通过。规则：毛重、皮重均须大于 0，
+      <strong>净重 = 毛重 − 皮重，不得少于 50 千克</strong>；
+      <strong>同一炭窑同一自然日最多保存一张未作废合格联</strong>（自然日按过磅日 YYYY-MM-DD 计）。
+      作废后该联不得再算出炭；作废仅管理员可操作。
+    </p>
+  </div>
+  <dl class="slip-recon" title="与时间轴窑剪影今日合格联对账">
+    <div><dt>今日未作废合格联（窑数）</dt><dd id="recon-today-count">{{ today_valid_count }}</dd></div>
+    <div><dt>全部未作废合格联</dt><dd>{{ valid_open_count }}</dd></div>
+    <div><dt>对账差（剪影 ↔ 专页）</dt><dd id="recon-diff">0</dd></div>
+  </dl>
+</section>
+
+<div class="slip-layout">
+  <section class="slip-list-card" aria-label="过磅联列表">
+    <h2>联单列表</h2>
+    <div class="table-wrap">
+      <table class="slip-table">
+        <thead>
+          <tr>
+            <th>联号</th>
+            <th>炭窑</th>
+            <th>过磅日（自然日）</th>
+            <th>毛重 kg</th>
+            <th>皮重 kg</th>
+            <th>净重 kg</th>
+            <th>司秤人</th>
+            <th>合格</th>
+            <th>状态</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for slip in slips %}
+          <tr class="{% if slip.is_voided %}is-voided{% elif not slip.is_qualified %}is-unqualified{% endif %}">
+            <td>{{ slip.id }}</td>
+            <td>{{ slip.clamp.code }}</td>
+            <td>{{ slip.weighed_on.isoformat() }}{% if slip.weighed_on == today %} <em class="tag-today">今日</em>{% endif %}</td>
+            <td>{{ '%.1f'|format(slip.gross_kg) }}</td>
+            <td>{{ '%.1f'|format(slip.tare_kg) }}</td>
+            <td><strong>{{ '%.1f'|format(slip.net_kg) }}</strong></td>
+            <td>{{ slip.weigher }}</td>
+            <td>{% if slip.is_qualified %}是{% else %}否{% endif %}</td>
+            <td>
+              {% if slip.is_voided %}
+              <span class="slip-state void">已作废{% if slip.voided_at %} · {{ slip.voided_at.strftime('%m-%d %H:%M') }}{% endif %}</span>
+              {% elif slip.is_qualified and slip.weighed_on == today %}
+              <span class="slip-state valid">今日有效</span>
+              {% elif slip.is_qualified %}
+              <span class="slip-state open">未作废</span>
+              {% else %}
+              <span class="slip-state unq">不合格</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if not slip.is_voided and user.role == 'admin' %}
+              <form method="post" action="/weigh-slips/{{ slip.id }}/void" onsubmit="return confirm('确认作废联号 {{ slip.id }}？作废后不得再据此算出炭。');">
+                <button type="submit" class="btn btn-small btn-danger">作废</button>
+              </form>
+              {% elif not slip.is_voided %}
+              <span class="hint">仅管理员</span>
+              {% else %}
+              <span class="hint">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% if slip.notes %}
+          <tr class="slip-note-row {% if slip.is_voided %}is-voided{% endif %}"><td colspan="10">备注：{{ slip.notes }}</td></tr>
+          {% endif %}
+          {% else %}
+          <tr><td colspan="10" class="slip-empty">尚无过磅联。操作工可在右侧落下第一张联。</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="slip-new-card" aria-label="新建过磅联">
+    <h2>新建过磅联</h2>
+    <form method="post" action="/weigh-slips/new" class="slip-form">
+      <label>炭窑
+        <select name="clamp_id" required>
+          {% for clamp in clamps %}
+          <option value="{{ clamp.id }}">{{ clamp.code }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>过磅日（自然日）
+        <input name="weighed_on" type="date" value="{{ today.isoformat() }}" required />
+      </label>
+      <div class="slip-num-row">
+        <label>毛重 kg（须 &gt; 0）
+          <input name="gross_kg" type="number" step="0.1" min="0.1" required />
+        </label>
+        <label>皮重 kg（须 &gt; 0）
+          <input name="tare_kg" type="number" step="0.1" min="0.1" required />
+        </label>
+      </div>
+      <p class="hint">净重 = 毛重 − 皮重，须 ≥ 50 kg，保存时自动校验。</p>
+      <label>司秤人
+        <input name="weigher" value="{{ user.username }}" required />
+      </label>
+      <label>是否合格
+        <select name="is_qualified">
+          <option value="1" selected>合格</option>
+          <option value="0">不合格</option>
+        </select>
+      </label>
+      <label>备注
+        <textarea name="notes" rows="2"></textarea>
+      </label>
+      <p class="hint">操作工可落联；同窑同自然日已有未作废合格联时，第二张会被拒绝。</p>
+      <div class="actions">
+        <button type="submit">落下过磅联</button>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}

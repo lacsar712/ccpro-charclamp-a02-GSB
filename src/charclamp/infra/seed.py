@@ -33,8 +33,11 @@ def seed_demo() -> None:
         session.add(site)
         session.flush()
 
+        # 坞东-甲：焖烧中且峰值已达标（455℃），但当日无出炭过磅联——
+        # 点「已出炭」应被中文拒绝，须先到过磅联专页落联。
         c1 = Clamp(site=site, code="坞东-甲", status=Clamp.STATUS_BURNING, wood_species="青冈")
         c2 = Clamp(site=site, code="坞东-乙", status=Clamp.STATUS_STACKED, wood_species="松木")
+        # 河沿-丙：历史已出炭窑，其过磅联为更早自然日，不影响今日判定。
         c3 = Clamp(site=site, code="河沿-丙", status=Clamp.STATUS_DRAWN, wood_species="栎木")
         session.add_all([c1, c2, c3])
         session.flush()

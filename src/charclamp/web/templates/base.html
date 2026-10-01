@@ -18,6 +18,12 @@
         </div>
       </div>
       <div class="topbar-actions">
+        {% if user %}
+        <nav class="topnav" aria-label="主导航">
+          <a class="topnav-link {% if active_nav == 'timeline' %}is-active{% endif %}" href="/">时间轴</a>
+          <a class="topnav-link {% if active_nav == 'weigh' %}is-active{% endif %}" href="/weigh-slips">过磅联</a>
+        </nav>
+        {% endif %}
         {% block top_actions %}{% endblock %}
         {% if user %}
         <a class="link-quiet" href="/logout">退出 {{ user.username }}</a>
