@@ -23,5 +23,8 @@ session_auth = SessionAuth[User, ServerSideSessionBackend](
     session_backend_config=ServerSideSessionConfig(
         session_id_bytes=32,
     ),
-    exclude=["/", "/login", "/logout", "/static", "/schema", "/favicon.ico"],
+    # 注意：不能把 "/" 放进 exclude——它会作为正则前缀贪婪匹配所有路径，
+    # 使整个鉴权中间件失效（Litestar 2.13 会告警并令 request.user 抛异常）。
+    # 未登录访问受保护页时由 main.py 的 NotAuthorizedException 处理器重定向到 /login。
+    exclude=["/login", "/logout", "/static", "/schema", "/favicon.ico"],
 )

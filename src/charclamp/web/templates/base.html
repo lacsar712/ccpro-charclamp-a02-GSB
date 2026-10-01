@@ -17,6 +17,10 @@
           <small>{% block site_label %}乌石岗焖烧坞{% endblock %}</small>
         </div>
       </div>
+      <nav class="topnav" aria-label="主导航">
+        <a class="topnav-link {% if active_nav == 'timeline' %}is-active{% endif %}" href="/">时间轴</a>
+        <a class="topnav-link {% if active_nav == 'weighing' %}is-active{% endif %}" href="/weighing">过磅联</a>
+      </nav>
       <div class="topbar-actions">
         {% block top_actions %}{% endblock %}
         {% if user %}

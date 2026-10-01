@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}出炭过磅联{% endblock %}
+{% block site_label %}乌石岗焖烧坞{% endblock %}
+{% block top_actions %}
+<a class="btn" href="/">返回时间轴</a>
+{% endblock %}
+
+{% block content %}
+<header class="timeline-head">
+  <div>
+    <h1>出炭过磅联</h1>
+    <p>
+      已出炭前须先在此落下过磅联。净重 = 毛重 − 皮重，毛重与皮重均须大于 0，净重不少于 50 千克。
+      同一炭窑同一自然日最多保存一张未作废的合格联。
+    </p>
+  </div>
+</header>
+
+<div class="reconcile" data-reconcile-diff="{{ slip_reconcile_diff }}" aria-live="polite">
+  对账（{{ today.isoformat() }}）：窑剪影标记今日有合格联
+  <strong>{{ slip_silhouette_count }}</strong> 座，本专页未作废合格联
+  <strong>{{ slip_page_count }}</strong> 张，差 <strong class="{% if slip_reconcile_diff == 0 %}diff-ok{% else %}diff-bad{% endif %}">{{ slip_reconcile_diff }}</strong>
+</div>
+
+<div class="weigh-layout">
+  <section class="panel">
+    <h2 class="panel-title">新建过磅联</h2>
+    <form class="slip-form" method="post" action="/weigh-slips/new">
+      <label>炭窑
+        <select name="clamp_id" required>
+          {% for clamp in clamps %}
+          <option value="{{ clamp.id }}">
+            {{ clamp.code }}（{{ clamp.site.name }}）{% if valid_today_map.get(clamp.id) %} · 今日已有合格联{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>过磅日（自然日）
+        <input name="weighed_on" type="date" value="{{ today.isoformat() }}" required />
+      </label>
+      <div class="form-grid-2">
+        <label>毛重（千克）
+          <input name="gross_kg" type="number" step="0.01" min="0" placeholder="如 320" required />
+        </label>
+        <label>皮重（千克）
+          <input name="tare_kg" type="number" step="0.01" min="0" placeholder="如 60" required />
+        </label>
+      </div>
+      <label>司秤人
+        <input name="weigher" value="{{ user.username }}" maxlength="64" required />
+      </label>
+      <label class="check-line">
+        <input type="checkbox" name="is_qualified" value="1" checked />
+        <span>本联炭品检验合格（不合格联不占当日名额，也不能用于出炭）</span>
+      </label>
+      <p class="hint">净重（毛重 − 皮重）不足 50 千克的合格联无法保存；自然日以过磅日日期为准。</p>
+      <div class="actions">
+        <button type="submit">落下过磅联</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-title">过磅联列表</h2>
+    <div class="table-wrap">
+      <table class="slip-table">
+        <thead>
+          <tr>
+            <th>联号</th>
+            <th>炭窑</th>
+            <th>过磅日</th>
+            <th>毛重kg</th>
+            <th>皮重kg</th>
+            <th>净重kg</th>
+            <th>司秤人</th>
+            <th>合格</th>
+            <th>状态</th>
+            {% if user.role == 'admin' %}<th>作废</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for slip in slips %}
+          <tr class="{% if slip.voided %}row-voided{% elif not slip.is_qualified %}row-unqualified{% endif %}">
+            <td>#{{ slip.id }}</td>
+            <td>{{ slip.clamp.code }}</td>
+            <td>{{ slip.weighed_on.isoformat() }}</td>
+            <td>{{ '%g'|format(slip.gross_kg) }}</td>
+            <td>{{ '%g'|format(slip.tare_kg) }}</td>
+            <td><strong>{{ '%g'|format(slip.net_kg) }}</strong></td>
+            <td>{{ slip.weigher }}</td>
+            <td>{% if slip.is_qualified %}是{% else %}否{% endif %}</td>
+            <td>
+              {% if slip.voided %}<span class="tag tag-void">已作废</span>
+              {% else %}<span class="tag tag-valid">有效</span>{% endif %}
+            </td>
+            {% if user.role == 'admin' %}
+            <td>
+              {% if not slip.voided %}
+              <form method="post" action="/weigh-slips/{{ slip.id }}/void"
+                    onsubmit="return confirm('确认作废 #{{ slip.id }}？作废后不得再据此出炭。');">
+                <button type="submit" class="btn btn-small btn-danger">作废</button>
+              </form>
+              {% else %}—{% endif %}
+            </td>
+            {% endif %}
+          </tr>
+          {% else %}
+          <tr><td colspan="{{ 9 if user.role == 'admin' else 8 }}" class="table-empty">尚无过磅联。先在左侧落下第一张。</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="hint">作废仅管理员可操作；操作工可新建。作废后的联不再用于出炭校验。</p>
+  </section>
+</div>
+{% endblock %}

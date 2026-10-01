@@ -21,7 +21,19 @@
         hx-swap="innerHTML"
       >为本窑登记班次</button>
 
+      <a class="btn ghost" href="/weighing" target="_top">前往过磅联专页</a>
+
       {% if clamp.status != 'drawn' %}
+      <div class="slip-status-box {% if today_slip %}has{% else %}missing{% endif %}">
+        {% if today_slip %}
+        <p class="hint ok-line">
+          {{ today.isoformat() }} 已有合格未作废过磅联：净重
+          <strong>{{ '%g'|format(today_slip.net_kg) }} 千克</strong>，司秤人 {{ today_slip.weigher }}
+        </p>
+        {% else %}
+        <p class="hint warn">{{ today.isoformat() }} 尚无合格且未作废的过磅联，不能标记已出炭。</p>
+        {% endif %}
+      </div>
       <form method="post" action="/clamps/{{ clamp.id }}/status">
         <input type="hidden" name="status" value="drawn" />
         <button type="submit" class="btn {% if not can_drawn %}is-disabled{% endif %}" {% if not can_drawn %}disabled{% endif %}>
@@ -31,7 +43,7 @@
       {% if not can_drawn %}
       <p class="hint warn">{{ drawn_msg }}</p>
       {% else %}
-      <p class="hint">最近班次峰值已达标（≥ 400℃），可标记出炭。</p>
+      <p class="hint">峰值已达标（≥ 400℃）且今日有合格过磅联，可标记出炭。</p>
       {% endif %}
       {% else %}
       <form method="post" action="/clamps/{{ clamp.id }}/status">
